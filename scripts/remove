@@ -1,4 +1,5 @@
 #!/bin/bash
+app=miniflux
 # Retrieve arguments
     domain=$(sudo yunohost app setting $app domain)
     path=$(sudo yunohost app setting $app path)
