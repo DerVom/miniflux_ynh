@@ -12,6 +12,7 @@ fi
 # Copy files to the right place
 final_path=/var/www/miniflux
 sudo mkdir -p $final_path
+sudo cp -a ../sources/* $final_path
 
 # Set permissions to miniflux directory
 sudo chown -R www-data: $final_path
