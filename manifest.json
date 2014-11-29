@@ -1,0 +1,39 @@
+{
+    "name": "miniflux",
+    "id": "miniflux",
+    "description": {
+        "en": "Minimal RSS reader."
+    },
+    "licence": "GPL-3",
+    "developer": {
+        "name": "Matanya Moses",
+        "email": "matanya@foss.co.il"
+    },
+    "multi_instance": "false",
+    "arguments": {
+        "install" : [
+            {
+                "name": "domain",
+                "ask": {
+                    "en": "Choose a domain for miniflux"
+                },
+                "example": "example.com"
+            },
+            {
+                "name": "path",
+                "ask": {
+                    "en": "Choose a path for miniflux"
+                },
+                "example": "/miniflux",
+                "default": "/miniflux"
+            },
+            {
+                "name": "admin",
+                "ask": {
+                    "en": "Choose an admin user"
+                },
+                "example": "johndoe"
+            }
+            }
+        ]
+    }
