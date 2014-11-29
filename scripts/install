@@ -9,6 +9,9 @@ if [[ ! $? -eq 0 ]]; then
     exit 1
 fi
 
+# Install dependencies
+sudo apt-get install php5-sqlite -y -qq
+
 # Copy files to the right place
 final_path=/var/www/miniflux
 sudo mkdir -p $final_path
