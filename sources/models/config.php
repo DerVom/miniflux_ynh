@@ -6,10 +6,9 @@ use DirectoryIterator;
 use SimpleValidator\Validator;
 use SimpleValidator\Validators;
 use PicoDb\Database;
-use PicoFeed\Config as ReaderConfig;
-use PicoFeed\Logging;
+use PicoFeed\Config\Config as ReaderConfig;
+use PicoFeed\Logging\Logger;
 
-const DB_VERSION = 29;
 const HTTP_USER_AGENT = 'Miniflux (http://miniflux.net)';
 
 // Get PicoFeed config
@@ -18,16 +17,26 @@ function get_reader_config()
     $config = new ReaderConfig;
     $config->setTimezone(get('timezone'));
 
+    // Client
     $config->setClientTimeout(HTTP_TIMEOUT);
     $config->setClientUserAgent(HTTP_USER_AGENT);
     $config->setGrabberUserAgent(HTTP_USER_AGENT);
 
+    // Proxy
     $config->setProxyHostname(PROXY_HOSTNAME);
     $config->setProxyPort(PROXY_PORT);
     $config->setProxyUsername(PROXY_USERNAME);
     $config->setProxyPassword(PROXY_PASSWORD);
 
+    // Filter
     $config->setFilterIframeWhitelist(get_iframe_whitelist());
+
+    if ((bool) get('image_proxy')) {
+        $config->setFilterImageProxyUrl('?action=proxy&url=%s');
+    }
+
+    // Parser
+    $config->setParserHashAlgo('crc32b');
 
     return $config;
 }
@@ -47,7 +56,7 @@ function get_iframe_whitelist()
 // Send a debug message to the console
 function debug($line)
 {
-    Logging::setMessage($line);
+    Logger::setMessage($line);
     write_debug();
 }
 
@@ -55,7 +64,7 @@ function debug($line)
 function write_debug()
 {
     if (DEBUG) {
-        file_put_contents(DEBUG_FILENAME, implode(PHP_EOL, Logging::getMessages()));
+        file_put_contents(DEBUG_FILENAME, implode(PHP_EOL, Logger::getMessages()));
     }
 }
 
@@ -85,7 +94,7 @@ function get_languages()
 function get_themes()
 {
     $themes = array(
-        'original' => t('Original')
+        'original' => t('Default')
     );
 
     if (file_exists(THEME_DIRECTORY)) {
@@ -121,8 +130,8 @@ function get_display_mode()
 	);
 }
 
-// Autoflush choices for items
-function get_autoflush_options()
+// Autoflush choices for read items
+function get_autoflush_read_options()
 {
     return array(
         '0' => t('Never'),
@@ -131,6 +140,18 @@ function get_autoflush_options()
         '5' => t('After %d days', 5),
         '15' => t('After %d days', 15),
         '30' => t('After %d days', 30)
+    );
+}
+
+// Autoflush choices for unread items
+function get_autoflush_unread_options()
+{
+    return array(
+        '0' => t('Never'),
+        '15' => t('After %d days', 15),
+        '30' => t('After %d days', 30),
+        '45' => t('After %d days', 45),
+        '60' => t('After %d days', 60),
     );
 }
 
@@ -150,9 +171,9 @@ function get_paging_options()
 function get_nothing_to_read_redirections()
 {
     return array(
-        'feeds' => t('Subscription page'),
-        'history' => t('History page'),
-        'bookmarks' => t('Bookmark page'),
+        'feeds' => t('Subscriptions'),
+        'history' => t('History'),
+        'bookmarks' => t('Bookmarks'),
     );
 }
 
@@ -219,28 +240,6 @@ function new_tokens()
     return Database::get('db')->table('config')->update($values);
 }
 
-// Save tokens for external authentication
-function save_auth_token($type, $value)
-{
-    return Database::get('db')
-        ->table('config')
-        ->update(array(
-            'auth_'.$type.'_token' => $value
-        ));
-}
-
-// Clear authentication tokens
-function remove_auth_token($type)
-{
-    Database::get('db')
-        ->table('config')
-        ->update(array(
-            'auth_'.$type.'_token' => ''
-        ));
-
-    $_SESSION['config'] = get_all();
-}
-
 // Get a config value from the DB or from the session
 function get($name)
 {
@@ -264,26 +263,13 @@ function get($name)
 // Get all config parameters
 function get_all()
 {
-    return Database::get('db')
+    $config = Database::get('db')
         ->table('config')
-        ->columns(
-            'username',
-            'language',
-            'timezone',
-            'autoflush',
-            'nocontent',
-            'items_per_page',
-            'theme',
-            'api_token',
-            'feed_token',
-            'fever_token',
-            'bookmarklet_token',
-            'items_sorting_direction',
-            'items_display_mode',
-            'redirect_nothing_to_read',
-            'auto_update_url'
-        )
         ->findOne();
+
+    unset($config['password']);
+
+    return $config;
 }
 
 // Validation for edit action
@@ -293,6 +279,7 @@ function validate_modification(array $values)
         new Validators\Required('username', t('The user name is required')),
         new Validators\MaxLength('username', t('The maximum length is 50 characters'), 50),
         new Validators\Required('autoflush', t('Value required')),
+        new Validators\Required('autoflush_unread', t('Value required')),
         new Validators\Required('items_per_page', t('Value required')),
         new Validators\Integer('items_per_page', t('Must be an integer')),
         new Validators\Required('theme', t('Value required')),
@@ -329,18 +316,24 @@ function save(array $values)
 
     unset($values['confirmation']);
 
-    // Reload configuration in session
-    $_SESSION['config'] = $values;
-
-    // Reload translations for flash session message
-    \Translator\load($values['language']);
-
     // If the user does not want content of feeds, remove it in previous ones
     if (isset($values['nocontent']) && (bool) $values['nocontent']) {
         Database::get('db')->table('items')->update(array('content' => ''));
     }
 
-    return Database::get('db')->table('config')->update($values);
+    if (Database::get('db')->table('config')->update($values)) {
+        reload();
+        return true;
+    }
+
+    return false;
+}
+
+// Reload the cache in session
+function reload()
+{
+    $_SESSION['config'] = get_all();
+    \Translator\load(get('language'));
 }
 
 // Get the user agent of the connected user

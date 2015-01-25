@@ -22,8 +22,6 @@ body {
     max-width: 780px;
     color: #333;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
 }
 
@@ -145,6 +143,14 @@ form {
     border-left: 2px dotted #ddd;
 }
 
+form h3 {
+    font-weight: bold;
+}
+
+form h3:first-child {
+    margin-top: 0;
+}
+
 label {
     cursor: pointer;
     display: block;
@@ -165,8 +171,6 @@ input[type="text"] {
     font-size: 99%;
     margin-bottom: 10px;
     margin-top: 5px;
-    -webkit-appearance: none;
-    appearance: none;
 }
 
 input[type="email"]:focus,
@@ -273,8 +277,6 @@ textarea.form-error {
 
 /* buttons */
 .btn {
-    -webkit-appearance: none;
-    appearance: none;
     display: inline-block;
     color: #333;
     border: 1px solid #ccc;
@@ -293,7 +295,7 @@ a.btn {
 }
 
 .btn-red {
-    border-color: #b0281a;;
+    border-color: #b0281a;
     background: #d14836;
     color: #fff;
 }
@@ -315,6 +317,58 @@ a.btn-red:hover,
 .btn-blue:focus {
     border-color: #2f5bb7;
     background: #357ae8;
+}
+
+/* icons */
+article[data-item-status="read"] .read-icon:before {
+    content: "✔";
+}
+
+article[data-item-bookmark="1"] .bookmark-icon:before {
+    content: "★";
+}
+
+/* not bookmarked icon only in article view */
+article[data-item-bookmark="0"] .item-infos .bookmark-icon:before {
+    content: "☆";
+}
+
+/* counter brackets */
+span#nav-counter:not(:empty):before, span#page-counter:not(:empty):before {
+    content: " (";
+}
+
+span.items-count:before {
+    content: "(";
+}
+
+span#nav-counter:not(:empty):after, span#page-counter:not(:empty):after, span.items-count:after {
+    content: ")";
+}
+
+@keyframes blinker {
+    0% { opacity: 1.0; }
+    50% { opacity: 0.0; }
+    100% { opacity: 1.0; }
+}
+
+/* Chrome, Safari, Opera */
+@-webkit-keyframes blinker {
+    0% { opacity: 1.0; }
+    50% { opacity: 0.0; }
+    100% { opacity: 1.0; }
+}
+
+.loading-icon:before {
+    content: "☀";
+    animation-name: blinker;
+    -webkit-animation-name: blinker; /* Chrome, Safari, Opera */
+    animation-duration: 500ms;
+    -webkit-animation-duration: 500ms; /* Chrome, Safari, Opera */
+    animation-timing-function: ease-in-out;
+    -webkit-animation-timing-function: ease-in-out; /* Chrome, Safari, Opera */
+    animation-iteration-count: infinite;
+    -webkit-animation-iteration-count: infinite; /* Chrome, Safari, Opera */
 }
 
 /* header */
@@ -394,8 +448,7 @@ nav .active a {
     padding-top: 30px;
 }
 
-.feed-disabled,
-.feed-disabled a {
+[data-feed-disabled] * {
     color: #aaa;
 }
 
@@ -459,7 +512,7 @@ nav .active a {
     color: #555;
 }
 
-.items a.read {
+.items article[data-item-status="read"] h2 a {
     color: #666;
 }
 
@@ -594,13 +647,7 @@ ul.item-infos {
     margin-bottom: 20px;
 }
 
-span.downloading img {
-    display: inline;
-    margin: 0;
-    padding: 0;
-}
-
-.downloading {
+#download-item {
     color: #000;
 }
 
@@ -611,15 +658,24 @@ span.downloading img {
     text-align: center;
 }
 
-a.bookmark-icon {
+a.icon {
     color: #333;
     text-decoration: none;
+}
+
+a.icon:focus,
+a.icon:hover {
+    color: #000;
 }
 
 #item-content-enclosure {
     border-bottom: 1px dashed #ccc;
     margin-bottom: 20px;
     padding-bottom: 10px;
+}
+
+.items article .favicon {
+    height: 16px;
 }
 
 /* other pages */
@@ -646,16 +702,6 @@ iframe {
     color: #333;
 }
 
-.loading-icon {
-    color: #000;
-    opacity: 1;
-    transition: opacity 0.2s ease-in-out;
-}
-
-.loading-icon-blink {
-    opacity: 0;
-}
-
 #login {
     width: 350px;
     margin: 0 auto;
@@ -665,6 +711,24 @@ iframe {
 #login form {
     border: none;
     margin-bottom: 45px;
+}
+
+.bookmarklet {
+    font-size: 0.9em;
+    font-weight: bold;
+    line-height: 30px;
+    padding: 4px;
+    text-decoration: none;
+    color: #333;
+    background: #fff;
+    border: 1px dotted #ccc;
+    border-radius: 4px;
+    cursor: move;
+}
+
+.bookmarklet:focus,
+.bookmarklet:hover {
+    color: #339966;
 }
 
 /* desktop design */

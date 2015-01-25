@@ -7,7 +7,6 @@
         data-item-id="<?= $item['id'] ?>"
         data-item-status="<?= $item['status'] ?>"
         data-item-bookmark="<?= $item['bookmark'] ?>"
-        data-item-page="<?= $menu ?>"
     >
 
         <?php if (isset($item_nav)): ?>
@@ -31,30 +30,18 @@
         <?php endif ?>
 
         <h1 <?= Helper\isRTL($item + array('rtl' => $feed['rtl'])) ? 'dir="rtl"' : '' ?>>
-            <a href="<?= $item['url'] ?>" rel="noreferrer" target="_blank" id="original-<?= $item['id'] ?>"><?= Helper\escape($item['title']) ?></a>
+            <a href="<?= $item['url'] ?>" rel="noreferrer" target="_blank" class="original"><?= Helper\escape($item['title']) ?></a>
         </h1>
 
         <ul class="item-infos">
             <li>
-            <?php if ($item['bookmark']): ?>
                 <a
-                    id="bookmark-<?=$item['id'] ?>"
-                    href="?action=bookmark&amp;value=0&amp;id=<?= $item['id'] ?>&amp;source=show&amp;menu=<?= $menu ?>"
-                    title="<?= t('remove bookmark') ?>"
-                    class="bookmark-icon"
+                    class="bookmark-icon icon"
+                    href="?action=bookmark&amp;value=<?= (int)!$item['bookmark'] ?>&amp;id=<?= $item['id'] ?>&amp;source=show&amp;menu=<?= $menu ?>"
+                    title="<?= ($item['bookmark']) ? t('remove bookmark') : t('bookmark') ?>"
+                    data-reverse-title="<?= ($item['bookmark']) ? t('bookmark') :t('remove bookmark') ?>"
                     data-action="bookmark"
-                    data-item-id="<?= $item['id'] ?>"
-                >★</a>
-            <?php else: ?>
-                <a
-                    id="bookmark-<?=$item['id'] ?>"
-                    href="?action=bookmark&amp;value=1&amp;id=<?= $item['id'] ?>&amp;source=show&amp;menu=<?= $menu ?>"
-                    title="<?= t('bookmark') ?>"
-                    class="bookmark-icon"
-                    data-action="bookmark"
-                    data-item-id="<?= $item['id'] ?>"
-                >☆</a>
-            <?php endif ?>
+                ></a>
             </li>
             <li>
                 <a href="?action=feed-items&amp;feed_id=<?= $feed['id'] ?>"><?= Helper\escape($feed['title']) ?></a>
@@ -67,14 +54,8 @@
                 <a href="<?= $item['enclosure'] ?>" rel="noreferrer" target="_blank"><?= t('attachment') ?></a>
             </li>
             <?php endif ?>
-            <li>
-                <a
-                    href="?action=mark-item-unread&amp;id=<?= $item['id'] ?>&amp;redirect=unread"
-                ><?= t('mark as unread') ?></a>
-            </li>
             <li class="hide-mobile">
                 <span id="download-item"
-                      data-item-id="<?= $item['id'] ?>"
                       data-failure-message="<?= t('unable to fetch content') ?>"
                       data-before-message="<?= t('in progress...') ?>"
                       data-after-message="<?= t('content downloaded') ?>">
@@ -96,7 +77,11 @@
                         <source src="<?= $item['enclosure'] ?>" type="<?= $item['enclosure_type'] ?>">
                     </video>
                 <?php elseif (strpos($item['enclosure_type'], 'image') !== false): ?>
-                    <img src="<?= $item['enclosure'] ?>" alt="enclosure"/>
+                    <?php if ($image_proxy_enabled): ?>
+                        <img src="?action=proxy&amp;url=<?= urlencode($item['enclosure']) ?>" alt="enclosure"/>
+                    <?php else: ?>
+                        <img src="<?= $item['enclosure'] ?>" alt="enclosure"/>
+                    <?php endif ?>
                 <?php endif ?>
             </div>
             <?php endif ?>

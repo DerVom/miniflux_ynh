@@ -2,9 +2,40 @@
 
 namespace Helper;
 
+/*
+ * get Version number from git archive output
+ */
+function parseAppVersion($refnames, $commithash)
+{
+    $version = 'master';
+
+    if ($refnames !== '$Format:%d$') {
+        $tag = preg_replace('/\s*\(.*tag:\sv([^,]+).*\)/i', '\1', $refnames);
+
+        if (!is_null($tag) && $tag !== $refnames) {
+            return $tag;
+        }
+    }
+
+    if ($commithash !== '$Format:%H$') {
+        $version .= '.'.$commithash;
+    }
+
+    return $version;
+}
+
+function favicon(array $favicons, $feed_id)
+{
+    if (! empty($favicons[$feed_id])) {
+        return '<img src="'.$favicons[$feed_id].'" class="favicon"/>';
+    }
+
+    return '';
+}
+
 function isRTL(array $item)
 {
-    return ! empty($item['rtl']) || \PicoFeed\Parser::isLanguageRTL($item['language']);
+    return ! empty($item['rtl']) || \PicoFeed\Parser\Parser::isLanguageRTL($item['language']);
 }
 
 function css()

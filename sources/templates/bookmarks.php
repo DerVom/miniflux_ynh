@@ -3,7 +3,7 @@
 <?php else: ?>
 
     <div class="page-header">
-        <h2><?= t('Bookmarks') ?> (<span id="page-counter"><?= $nb_items ?></span>)</h2>
+        <h2><?= t('Bookmarks') ?><span id="page-counter"><?= isset($nb_items) ? $nb_items : '' ?></span></h2>
     </div>
 
     <?php if ($nothing_to_read): ?>
@@ -12,7 +12,14 @@
 
     <section class="items" id="listing">
         <?php foreach ($items as $item): ?>
-            <?= \PicoFarad\Template\load('item', array('item' => $item, 'menu' => $menu, 'offset' => $offset, 'hide' => false, 'display_mode' => $display_mode)) ?>
+            <?= \PicoFarad\Template\load('item', array(
+                'item' => $item,
+                'menu' => $menu,
+                'offset' => $offset,
+                'hide' => false,
+                'display_mode' => $display_mode,
+                'favicons' => $favicons,
+            )) ?>
         <?php endforeach ?>
 
         <?= \PicoFarad\Template\load('paging', array('menu' => $menu, 'nb_items' => $nb_items, 'items_per_page' => $items_per_page, 'offset' => $offset, 'order' => $order, 'direction' => $direction)) ?>
