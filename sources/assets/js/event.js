@@ -2,14 +2,27 @@ Miniflux.Event = (function() {
 
     var queue = [];
 
+    function isEventIgnored(e)
+    {
+        if (e.keyCode !== 63 && e.which !== 63 && (e.ctrlKey || e.shiftKey || e.altKey || e.metaKey)) {
+            return true;
+        }
+
+        // Do not handle events when there is a focus in form fields
+        var target = e.target || e.srcElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+            return true;
+        }
+
+        return false;
+    }
+
     return {
         lastEventType: "",
         ListenMouseEvents: function() {
 
             document.onclick = function(e) {
-                var action = e.target.getAttribute("data-action");
-
-                if (action && action !== 'original-link') {
+                if (e.target.hasAttribute("data-action") && e.target.className !== 'original') {
                     e.preventDefault();
                 }
             };
@@ -46,7 +59,7 @@ Miniflux.Event = (function() {
                             }
                         }
 
-                        return null;
+                        return;
                     }();
 
                     switch (action) {
@@ -54,31 +67,25 @@ Miniflux.Event = (function() {
                             Miniflux.Feed.UpdateAll();
                             break;
                         case 'refresh-feed':
-                            Miniflux.Feed.Update(currentItem);
+                            currentItem && Miniflux.Feed.Update(currentItem);
                             break;
                         case 'mark-read':
-                            Miniflux.Item.MarkAsRead(currentItem);
+                            currentItem && Miniflux.Item.MarkAsRead(currentItem);
                             break;
                         case 'mark-unread':
-                            Miniflux.Item.MarkAsUnread(currentItem);
+                            currentItem && Miniflux.Item.MarkAsUnread(currentItem);
                             break;
                         case 'mark-removed':
-                            Miniflux.Item.MarkAsRemoved(currentItem);
+                            currentItem && Miniflux.Item.MarkAsRemoved(currentItem);
                             break;
                         case 'bookmark':
-                            Miniflux.Item.SwitchBookmark(currentItem);
+                            currentItem && Miniflux.Item.SwitchBookmark(currentItem);
                             break;
                         case 'download-item':
-                            Miniflux.Item.DownloadContent(currentItem);
-                            break;
-                        case 'original-link':
-                            Miniflux.Item.OpenOriginal(currentItem);
-                            break;
-                        case 'mark-all-read':
-                            Miniflux.Item.MarkListingAsRead("?action=unread");
+                            currentItem && Miniflux.Item.DownloadContent(currentItem);
                             break;
                         case 'mark-feed-read':
-                            Miniflux.Item.MarkListingAsRead("?action=feed-items&feed_id=" + e.target.getAttribute("data-feed-id"));
+                            Miniflux.Item.MarkFeedAsRead(e.target.getAttribute("data-feed-id"));
                             break;
                     }
                 }
@@ -88,42 +95,41 @@ Miniflux.Event = (function() {
 
             document.onkeypress = function(e) {
 
-                if (e.keyCode !== 63 && (e.ctrlKey || e.shiftKey || e.altKey || e.metaKey)) {
-                    return;
-                }
-
-                // Do not handle events when there is a focus in form fields
-                var target = e.target || e.srcElement;
-                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+                if (isEventIgnored(e)) {
                     return;
                 }
 
                 Miniflux.Event.lastEventType = "keyboard";
 
-                queue.push(e.keyCode || e.which);
+                queue.push(e.key || e.which);
 
-                if (queue[0] === 103) { // g
+                if (queue[0] === 'g' || queue[0] === 103) {
 
                     switch (queue[1]) {
                         case undefined:
                             break;
-                        case 117: // u
+                        case 'u':
+                        case 117:
                             window.location.href = "?action=unread";
                             queue = [];
                             break;
-                        case 98: // b
+                        case 'b':
+                        case 98:
                             window.location.href = "?action=bookmarks";
                             queue = [];
                             break;
-                        case 104: // h
+                        case 'h':
+                        case 104:
                             window.location.href = "?action=history";
                             queue = [];
                             break;
-                        case 115: // s
+                        case 's':
+                        case 115:
                             window.location.href = "?action=feeds";
                             queue = [];
                             break;
-                        case 112: // p
+                        case 'p':
+                        case 112:
                             window.location.href = "?action=config";
                             queue = [];
                             break;
@@ -140,49 +146,94 @@ Miniflux.Event = (function() {
                         return document.getElementById("current-item");
                     }();
 
-                    switch (e.keyCode || e.which) {
-                        case 100: // d
-                            Miniflux.Item.DownloadContent(currentItem);
+                    switch (e.key || e.which) {
+                        case 'd':
+                        case 100:
+                            currentItem && Miniflux.Item.DownloadContent(currentItem);
                             break;
-                        case 112: // p
-                        case 107: // k
+                        case 'p':
+                        case 112:
+                        case 'k':
+                        case 107:
                             Miniflux.Nav.SelectPreviousItem();
                             break;
-                        case 110: // n
-                        case 106: // j
+                        case 'n':
+                        case 110:
+                        case 'j':
+                        case 106:
                             Miniflux.Nav.SelectNextItem();
                             break;
-                        case 118: // v
-                            Miniflux.Item.OpenOriginal(currentItem);
+                        case 'v':
+                        case 118:
+                            currentItem && Miniflux.Item.OpenOriginal(currentItem);
                             break;
-                        case 111: // o
-                            Miniflux.Item.Show(currentItem);
+                        case 'o':
+                        case 111:
+                            currentItem && Miniflux.Item.Show(currentItem);
                             break;
-                        case 109: // m
-                            Miniflux.Item.SwitchStatus(currentItem);
+                        case 'm':
+                        case 109:
+                            currentItem && Miniflux.Item.SwitchStatus(currentItem);
                             break;
-                        case 102: // f
-                            Miniflux.Item.SwitchBookmark(currentItem);
+                        case 'f':
+                        case 102:
+                            currentItem && Miniflux.Item.SwitchBookmark(currentItem);
                             break;
-                        case 104: // h
+                        case 'h':
+                        case 104:
                             Miniflux.Nav.OpenPreviousPage();
                             break
-                        case 108: // l
+                        case 'l':
+                        case 108:
                             Miniflux.Nav.OpenNextPage();
                             break;
-                        case 114: // r
+                        case 'r':
+                        case 114:
                             Miniflux.Feed.UpdateAll();
                             break;
-                        case 63: // ?
+                        case '?':
+                        case 63:
                             Miniflux.Nav.ShowHelp();
                             break;
-                        case 122: // z
+                        case 'z':
+                        case 122:
                             Miniflux.Item.ToggleRTLMode();
                             break;
                     }
                 }
             };
+
+            document.onkeydown = function(e) {
+
+                if (isEventIgnored(e)) {
+                    return;
+                }
+
+                Miniflux.Event.lastEventType = "keyboard";
+
+                switch (e.key || e.which) {
+                    case "ArrowLeft":
+                    case "Left":
+                    case 37:
+                        Miniflux.Nav.SelectPreviousItem();
+                        break;
+                    case "ArrowRight":
+                    case "Right":
+                    case 39:
+                        Miniflux.Nav.SelectNextItem();
+                        break;
+                }
+            };
+        },
+        ListenVisibilityEvents: function() {
+            document.addEventListener('visibilitychange', function() {
+                Miniflux.App.Log('document.visibilityState: ' + document.visibilityState);
+
+                if (!document.hidden && Miniflux.Item.hasNewUnread()) {
+                    Miniflux.App.Log('Need to update the unread counter with fresh values from the database');
+                    Miniflux.Item.CheckForUpdates();
+                }
+            });
         }
     };
-
 })();

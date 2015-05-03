@@ -3,6 +3,7 @@
 require '../common.php';
 
 use Model\Feed;
+use Model\Service;
 use PicoDb\Database;
 
 // Route handler
@@ -30,13 +31,16 @@ function response(array $response)
 function auth()
 {
     if (! empty($_GET['database'])) {
-        Model\Database\select($_GET['database']);
+        // Return unauthorized if the requested database could not be found
+        if (! Model\Database\select($_GET['database'])) {
+            return array(
+                'api_version' => 3,
+                'auth' => 0,
+            );
+        }
     }
 
-    $credentials = Database::get('db')->table('config')
-                       ->columns('username', 'fever_token')
-                       ->findOne();
-
+    $credentials = Database::get('db')->hashtable('settings')->get('username', 'fever_token');
     $api_key = md5($credentials['username'].':'.$credentials['fever_token']);
 
     $response = array(
@@ -91,7 +95,7 @@ route('feeds', function() {
         foreach ($feeds as $feed) {
             $response['feeds'][] = array(
                 'id' => (int) $feed['id'],
-                'favicon_id' => 1,
+                'favicon_id' => (int) $feed['id'],
                 'title' => $feed['title'],
                 'url' => $feed['feed_url'],
                 'site_url' => $feed['site_url'],
@@ -119,7 +123,22 @@ route('favicons', function() {
     $response = auth();
 
     if ($response['auth']) {
+
+        $favicons = Database::get('db')
+            ->table('favicons')
+            ->columns(
+                'feed_id',
+                'icon'
+            )
+            ->findAll();
+
         $response['favicons'] = array();
+        foreach ($favicons as $favicon) {
+            $response['favicons'][] = array(
+                'id' => (int) $favicon['feed_id'],
+                'data' => $favicon['icon']
+            );
+        }
     }
 
     response($response);
@@ -134,7 +153,6 @@ route('items', function() {
 
         $query = Database::get('db')
                         ->table('items')
-                        ->limit(50)
                         ->columns(
                             'rowid',
                             'feed_id',
@@ -145,7 +163,9 @@ route('items', function() {
                             'updated',
                             'status',
                             'bookmark'
-                        );
+                        )
+                        ->limit(50)
+                        ->neq('status', 'removed');
 
         if (isset($_GET['since_id']) && is_numeric($_GET['since_id'])) {
 
@@ -243,6 +263,14 @@ route('write_items', function() {
 
         if ($_POST['as'] === 'saved') {
             $query->update(array('bookmark' => 1));
+
+            // Send bookmark to third-party services if enabled
+            $item_id = Database::get('db')
+                            ->table('items')
+                            ->eq('rowid', $_POST['id'])
+                            ->findOneColumn('id');
+
+            Service\push($item_id);
         }
         else if ($_POST['as'] === 'unsaved') {
             $query->update(array('bookmark' => 0));

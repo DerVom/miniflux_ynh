@@ -38,6 +38,14 @@ abstract class Client
     private $encoding = '';
 
     /**
+     * HTTP request headers
+     *
+     * @access protected
+     * @var array
+     */
+    protected $request_headers = array();
+
+    /**
      * HTTP Etag header
      *
      * @access protected
@@ -158,6 +166,14 @@ abstract class Client
     protected $status_code = 0;
 
     /**
+     * Enables direct passthrough to requesting client
+     *
+     * @access protected
+     * @var bool
+     */
+    protected $passthrough = false;
+
+    /**
      * Do the HTTP request
      *
      * @abstract
@@ -183,6 +199,16 @@ abstract class Client
         }
 
         throw new LogicException('You must have "allow_url_fopen=1" or curl extension installed');
+    }
+
+    /**
+     * Add HTTP Header to the request
+     *
+     * @access public
+     * @param array $headers
+     */
+    public function setHeaders($headers) {
+        $this->request_headers = $headers;
     }
 
     /**
@@ -336,39 +362,6 @@ abstract class Client
     }
 
     /**
-     * Parse HTTP headers
-     *
-     * @access public
-     * @param  array   $lines   List of headers
-     * @return array
-     */
-    public function parseHeaders(array $lines)
-    {
-        $status = 200;
-        $headers = array();
-
-        foreach ($lines as $line) {
-
-            if (strpos($line, 'HTTP') === 0) {
-                $status = (int) substr($line, 9, 3);
-            }
-            else if (strpos($line, ':') !== false) {
-
-                @list($name, $value) = explode(': ', $line);
-                if ($value) $headers[trim($name)] = trim($value);
-            }
-        }
-
-        Logger::setMessage(get_called_class().' HTTP status code: '.$status);
-
-        foreach ($headers as $name => $value) {
-            Logger::setMessage(get_called_class().' HTTP header: '.$name.' => '.$value);
-        }
-
-        return array($status, new HttpHeaders($headers));
-    }
-
-    /**
      * Set the Last-Modified HTTP header
      *
      * @access public
@@ -493,6 +486,17 @@ abstract class Client
     public function isModified()
     {
         return $this->is_modified;
+    }
+
+    /**
+     * return true if passthrough mode is enabled
+     *
+     * @access public
+     * @return bool
+     */
+    public function isPassthroughEnabled()
+    {
+        return $this->passthrough;
     }
 
     /**
@@ -626,6 +630,30 @@ abstract class Client
     }
 
     /**
+     * Enable the passthrough mode
+     *
+     * @access public
+     * @return \PicoFeed\Client\Client
+     */
+    public function enablePassthroughMode()
+    {
+        $this->passthrough = true;
+        return $this;
+    }
+
+    /**
+     * Disable the passthrough mode
+     *
+     * @access public
+     * @return \PicoFeed\Client\Client
+     */
+    public function disablePassthroughMode()
+    {
+        $this->passthrough = false;
+        return $this;
+    }
+
+    /**
      * Set config object
      *
      * @access public
@@ -635,8 +663,8 @@ abstract class Client
     public function setConfig($config)
     {
         if ($config !== null) {
-            $this->setTimeout($config->getGrabberTimeout());
-            $this->setUserAgent($config->getGrabberUserAgent());
+            $this->setTimeout($config->getClientTimeout());
+            $this->setUserAgent($config->getClientUserAgent());
             $this->setMaxRedirections($config->getMaxRedirections());
             $this->setMaxBodySize($config->getMaxBodySize());
             $this->setProxyHostname($config->getProxyHostname());

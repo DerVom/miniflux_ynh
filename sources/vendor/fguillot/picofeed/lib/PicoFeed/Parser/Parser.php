@@ -3,13 +3,11 @@
 namespace PicoFeed\Parser;
 
 use SimpleXMLElement;
-use DateTime;
-use DateTimeZone;
+use PicoFeed\Client\Url;
 use PicoFeed\Encoding\Encoding;
 use PicoFeed\Filter\Filter;
 use PicoFeed\Logging\Logger;
-use PicoFeed\Client\Url;
-use PicoFeed\Client\Grabber;
+use PicoFeed\Scraper\Scraper;
 
 /**
  * Base parser class
@@ -28,20 +26,20 @@ abstract class Parser
     private $config;
 
     /**
+     * DateParser object
+     *
+     * @access protected
+     * @var \PicoFeed\Parser\DateParser
+     */
+    protected $date;
+
+    /**
      * Hash algorithm used to generate item id, any value supported by PHP, see hash_algos()
      *
      * @access private
      * @var string
      */
     private $hash_algo = 'sha256';
-
-    /**
-     * Timezone used to parse feed dates
-     *
-     * @access private
-     * @var string
-     */
-    private $timezone = 'UTC';
 
     /**
      * Feed content (XML data)
@@ -84,6 +82,14 @@ abstract class Parser
     private $enable_grabber = false;
 
     /**
+     * Enable the content grabber on all pages
+     *
+     * @access private
+     * @var bool
+     */
+    private $grabber_needs_rule_file = false;
+
+    /**
      * Ignore those urls for the content scraper
      *
      * @access private
@@ -101,6 +107,7 @@ abstract class Parser
      */
     public function __construct($content, $http_encoding = '', $fallback_url = '')
     {
+        $this->date = new DateParser;
         $this->fallback_url = $fallback_url;
         $xml_encoding = XmlParser::getEncodingFromXmlTag($content);
 
@@ -149,10 +156,14 @@ abstract class Parser
         $this->findFeedId($xml, $feed);
         $this->findFeedDate($xml, $feed);
         $this->findFeedLogo($xml, $feed);
+        $this->findFeedIcon($xml, $feed);
 
         foreach ($this->getItemsTree($xml) as $entry) {
 
             $item = new Item;
+            $item->xml = $entry;
+            $item->namespaces = $this->namespaces;
+
             $this->findItemAuthor($xml, $entry, $item);
 
             $this->findItemUrl($entry, $item);
@@ -164,7 +175,7 @@ abstract class Parser
             // Id generation can use the item url/title/content (order is important)
             $this->findItemId($entry, $item, $feed);
 
-            $this->findItemDate($entry, $item);
+            $this->findItemDate($entry, $item, $feed);
             $this->findItemEnclosure($entry, $item, $feed);
             $this->findItemLanguage($entry, $item, $feed);
 
@@ -234,11 +245,16 @@ abstract class Parser
     {
         if ($this->enable_grabber && ! in_array($item->getUrl(), $this->grabber_ignore_urls)) {
 
-            $grabber = new Grabber($item->getUrl());
-            $grabber->setConfig($this->config);
-            $grabber->download();
+            $grabber = new Scraper($this->config);
+            $grabber->setUrl($item->getUrl());
 
-            if ($grabber->parse()) {
+            if ($this->grabber_needs_rule_file) {
+                $grabber->disableCandidateParser();
+            }
+
+            $grabber->execute();
+
+            if ($grabber->hasRelevantContent()) {
                 $item->content = $grabber->getFilteredContent();
             }
         }
@@ -267,93 +283,11 @@ abstract class Parser
      * Generate a unique id for an entry (hash all arguments)
      *
      * @access public
-     * @param  string  $args  Pieces of data to hash
      * @return string
      */
     public function generateId()
     {
         return hash($this->hash_algo, implode(func_get_args()));
-    }
-
-    /**
-     * Try to parse all date format for broken feeds
-     *
-     * @access public
-     * @param  string  $value  Original date format
-     * @return integer         Timestamp
-     */
-    public function parseDate($value)
-    {
-        // Format => truncate to this length if not null
-        $formats = array(
-            DATE_ATOM => null,
-            DATE_RSS => null,
-            DATE_COOKIE => null,
-            DATE_ISO8601 => null,
-            DATE_RFC822 => null,
-            DATE_RFC850 => null,
-            DATE_RFC1036 => null,
-            DATE_RFC1123 => null,
-            DATE_RFC2822 => null,
-            DATE_RFC3339 => null,
-            'D, d M Y H:i:s' => 25,
-            'D, d M Y h:i:s' => 25,
-            'D M d Y H:i:s' => 24,
-            'j M Y H:i:s' => 20,
-            'Y-m-d H:i:s' => 19,
-            'Y-m-d\TH:i:s' => 19,
-            'd/m/Y H:i:s' => 19,
-            'D, d M Y' => 16,
-            'Y-m-d' => 10,
-            'd-m-Y' => 10,
-            'm-d-Y' => 10,
-            'd.m.Y' => 10,
-            'm.d.Y' => 10,
-            'd/m/Y' => 10,
-            'm/d/Y' => 10,
-        );
-
-        $value = trim($value);
-
-        foreach ($formats as $format => $length) {
-
-            $truncated_value = $value;
-            if ($length !== null) {
-                $truncated_value = substr($truncated_value, 0, $length);
-            }
-
-            $timestamp = $this->getValidDate($format, $truncated_value);
-            if ($timestamp > 0) {
-                return $timestamp;
-            }
-        }
-
-        $date = new DateTime('now', new DateTimeZone($this->timezone));
-        return $date->getTimestamp();
-    }
-
-    /**
-     * Get a valid date from a given format
-     *
-     * @access public
-     * @param  string  $format   Date format
-     * @param  string  $value    Original date value
-     * @return integer           Timestamp
-     */
-    public function getValidDate($format, $value)
-    {
-        $date = DateTime::createFromFormat($format, $value, new DateTimeZone($this->timezone));
-
-        if ($date !== false) {
-
-            $errors = DateTime::getLastErrors();
-
-            if ($errors['error_count'] === 0 && $errors['warning_count'] === 0) {
-                return $date->getTimestamp();
-            }
-        }
-
-        return 0;
     }
 
     /**
@@ -411,7 +345,10 @@ abstract class Parser
      */
     public function setTimezone($timezone)
     {
-        $this->timezone = $timezone ?: $this->timezone;
+        if ($timezone) {
+            $this->date->timezone = $timezone;
+        }
+
         return $this;
     }
 
@@ -458,11 +395,14 @@ abstract class Parser
      * Enable the content grabber
      *
      * @access public
+     * @param bool $needs_rule_file true if only pages with rule files should be
+     * scraped
      * @return \PicoFeed\Parser\Parser
      */
-    public function enableContentGrabber()
+    public function enableContentGrabber($needs_rule_file = false)
     {
         $this->enable_grabber = true;
+        $this->grabber_needs_rule_file = $needs_rule_file;
     }
 
     /**
@@ -550,6 +490,15 @@ abstract class Parser
     public abstract function findFeedLogo(SimpleXMLElement $xml, Feed $feed);
 
     /**
+     * Find the feed icon
+     *
+     * @access public
+     * @param  SimpleXMLElement          $xml     Feed xml
+     * @param  \PicoFeed\Parser\Feed     $feed    Feed object
+     */
+    public abstract function findFeedIcon(SimpleXMLElement $xml, Feed $feed);
+
+    /**
      * Get the path to the items XML tree
      *
      * @access public
@@ -601,9 +550,10 @@ abstract class Parser
      *
      * @access public
      * @param  SimpleXMLElement          $entry   Feed item
-     * @param  \PicoFeed\Parser\Item     $item    Item object
+     * @param  Item                      $item    Item object
+     * @param  \PicoFeed\Parser\Feed     $feed    Feed object
      */
-    public abstract function findItemDate(SimpleXMLElement $entry, Item $item);
+    public abstract function findItemDate(SimpleXMLElement $entry, Item $item, Feed $feed);
 
     /**
      * Find the item content

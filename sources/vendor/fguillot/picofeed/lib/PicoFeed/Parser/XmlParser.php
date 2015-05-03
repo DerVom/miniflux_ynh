@@ -55,7 +55,9 @@ class XmlParser
      */
     private static function scanInput($input, Closure $callback)
     {
-        if (substr(php_sapi_name(), 0, 3) === 'fpm') {
+        $isRunningFpm = substr(php_sapi_name(), 0, 3) === 'fpm';
+
+        if ($isRunningFpm) {
 
             // If running with PHP-FPM and an entity is detected we refuse to parse the feed
             // @see https://bugs.php.net/bug.php?id=64938
@@ -64,8 +66,7 @@ class XmlParser
             }
         }
         else {
-
-            libxml_disable_entity_loader(true);
+            $entityLoaderDisabled = libxml_disable_entity_loader(true);
         }
 
         libxml_use_internal_errors(true);
@@ -81,6 +82,10 @@ class XmlParser
             }
         }
 
+        if ($isRunningFpm === false) {
+            libxml_disable_entity_loader($entityLoaderDisabled);
+        }
+
         return $dom;
     }
 
@@ -90,10 +95,14 @@ class XmlParser
      * @static
      * @access public
      * @param  string   $input   XML content
-     * @return \DOMNode
+     * @return \DOMNDocument
      */
     public static function getDomDocument($input)
     {
+        if (empty($input)) {
+            return false;
+        }
+
         $dom = self::scanInput($input, function ($in) {
             $dom = new DomDocument;
             $dom->loadXml($in, LIBXML_NONET);
@@ -198,8 +207,29 @@ class XmlParser
             $p1 = strpos($data, 'encoding=');
             $p2 = strpos($data, '"', $p1 + 10);
 
-            $encoding = substr($data, $p1 + 10, $p2 - $p1 - 10);
-            $encoding = strtolower($encoding);
+            if ($p1 !== false && $p2 !== false) {
+                $encoding = substr($data, $p1 + 10, $p2 - $p1 - 10);
+                $encoding = strtolower($encoding);
+            }
+        }
+
+        return $encoding;
+    }
+
+    /**
+     * Get the charset from a meta tag
+     *
+     * @static
+     * @access public
+     * @param  string  $data  Input data
+     * @return string
+     */
+    public static function getEncodingFromMetaTag($data)
+    {
+        $encoding = '';
+
+        if (preg_match('/<meta.*?charset\s*=\s*["\']?\s*([^"\'\s\/>;]+)/i', $data, $match) === 1) {
+            $encoding = strtolower($match[1]);
         }
 
         return $encoding;

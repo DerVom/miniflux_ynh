@@ -6,7 +6,7 @@ if (file_exists(__DIR__.'/config.php')) {
     require __DIR__.'/config.php';
 }
 
-defined('APP_VERSION') or define('APP_VERSION', Helper\parseAppVersion(' (tag: v1.1.6)','16945c3649064abadde11d5f24a09a4ec0fd5b5c'));
+defined('APP_VERSION') or define('APP_VERSION', Helper\parse_app_version('$Format:%d$','$Format:%H$'));
 defined('HTTP_TIMEOUT') or define('HTTP_TIMEOUT', 20);
 
 defined('BASE_URL_DIRECTORY') or define('BASE_URL_DIRECTORY', dirname($_SERVER['PHP_SELF']));
@@ -16,7 +16,6 @@ defined('DATA_DIRECTORY') or define('DATA_DIRECTORY', ROOT_DIRECTORY.DIRECTORY_S
 defined('ENABLE_MULTIPLE_DB') or define('ENABLE_MULTIPLE_DB', true);
 defined('DB_FILENAME') or define('DB_FILENAME', 'db.sqlite');
 
-defined('DEBUG') or define('DEBUG', true);
 defined('DEBUG_FILENAME') or define('DEBUG_FILENAME', DATA_DIRECTORY.DIRECTORY_SEPARATOR.'debug.log');
 
 defined('THEME_DIRECTORY') or define('THEME_DIRECTORY', 'themes');
@@ -31,6 +30,8 @@ defined('ENABLE_AUTO_UPDATE') or define('ENABLE_AUTO_UPDATE', true);
 defined('AUTO_UPDATE_DOWNLOAD_DIRECTORY') or define('AUTO_UPDATE_DOWNLOAD_DIRECTORY', DATA_DIRECTORY.DIRECTORY_SEPARATOR.'download');
 defined('AUTO_UPDATE_ARCHIVE_DIRECTORY') or define('AUTO_UPDATE_ARCHIVE_DIRECTORY', DATA_DIRECTORY.DIRECTORY_SEPARATOR.'archive');
 defined('AUTO_UPDATE_BACKUP_DIRECTORY') or define('AUTO_UPDATE_BACKUP_DIRECTORY', DATA_DIRECTORY.DIRECTORY_SEPARATOR.'backup');
+
+defined('RULES_DIRECTORY') or define('RULES_DIRECTORY', ROOT_DIRECTORY.DIRECTORY_SEPARATOR.'rules');
 
 require __DIR__.'/check_setup.php';
 

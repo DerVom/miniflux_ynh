@@ -82,6 +82,12 @@ class Client
         'Content-Type: application/json',
         'Accept: application/json'
     );
+    /**
+     * SSL certificates verification
+     * @access public
+     * @var boolean
+     */
+    public $ssl_verify_peer = true;
 
     /**
      * Constructor
@@ -246,7 +252,7 @@ class Client
     public function getResult(array $payload)
     {
         if (isset($payload['error']['code'])) {
-            $this->handleRpcErrors($payload['error']['code']);
+            $this->handleRpcErrors($payload['error']);
         }
 
         return isset($payload['result']) ? $payload['result'] : null;
@@ -258,15 +264,15 @@ class Client
      * @access public
      * @param  integer    $code
      */
-    public function handleRpcErrors($code)
+    public function handleRpcErrors($error)
     {
-        switch ($code) {
+        switch ($error['code']) {
             case -32601:
-                throw new BadFunctionCallException('Procedure not found');
+                throw new BadFunctionCallException('Procedure not found: '. $error['message']);
             case -32602:
-                throw new InvalidArgumentException('Invalid arguments');
+                throw new InvalidArgumentException('Invalid arguments: '. $error['message']);
             default:
-                throw new RuntimeException('Invalid request/response');
+                throw new RuntimeException('Invalid request/response: '. $error['message'], $error['code']);
         }
     }
 
@@ -288,6 +294,7 @@ class Client
         curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->ssl_verify_peer);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
 
         if ($this->username && $this->password) {

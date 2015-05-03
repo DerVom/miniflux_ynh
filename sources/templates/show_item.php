@@ -1,5 +1,5 @@
 <?php if (empty($item)): ?>
-    <p class="alert alert-info"><?= t('Item not found') ?></p>
+    <p class="alert alert-error"><?= t('Item not found') ?></p>
 <?php else: ?>
     <article
         class="item"
@@ -13,23 +13,23 @@
         <nav class="top">
             <span class="nav-left">
                 <?php if ($item_nav['previous']): ?>
-                    <a href="?action=show&amp;menu=<?= $menu ?>&amp;id=<?= $item_nav['previous']['id'] ?>" id="previous-item" title="<?= Helper\escape($item_nav['previous']['title']) ?>">« <?= t('Previous') ?></a>
+                    <a href="?action=show&amp;menu=<?= $menu ?>&amp;id=<?= $item_nav['previous']['id'] ?>" id="previous-item" title="<?= Helper\escape($item_nav['previous']['title']) ?>"><?= t('Previous') ?></a>
                 <?php else: ?>
-                    « <?= t('Previous') ?>
+                    <?= t('Previous') ?>
                 <?php endif ?>
             </span>
 
             <span class="nav-right">
                 <?php if ($item_nav['next']): ?>
-                    <a href="?action=show&amp;menu=<?= $menu ?>&amp;id=<?= $item_nav['next']['id'] ?>" id="next-item" title="<?= Helper\escape($item_nav['next']['title']) ?>"><?= t('Next') ?> »</a>
+                    <a href="?action=show&amp;menu=<?= $menu ?>&amp;id=<?= $item_nav['next']['id'] ?>" id="next-item" title="<?= Helper\escape($item_nav['next']['title']) ?>"><?= t('Next') ?></a>
                 <?php else: ?>
-                    <?= t('Next') ?> »
+                    <?= t('Next') ?>
                 <?php endif ?>
             </span>
         </nav>
         <?php endif ?>
 
-        <h1 <?= Helper\isRTL($item + array('rtl' => $feed['rtl'])) ? 'dir="rtl"' : '' ?>>
+        <h1 <?= Helper\is_rtl($item + array('rtl' => $feed['rtl'])) ? 'dir="rtl"' : 'dir="ltr"' ?>>
             <a href="<?= $item['url'] ?>" rel="noreferrer" target="_blank" class="original"><?= Helper\escape($item['title']) ?></a>
         </h1>
 
@@ -64,26 +64,26 @@
             </li>
         </ul>
 
-        <div id="item-content" <?= Helper\isRTL($item + array('rtl' => $feed['rtl']))  ? 'dir="rtl"' : '' ?>>
+        <div id="item-content" <?= Helper\is_rtl($item + array('rtl' => $feed['rtl']))  ? 'dir="rtl"' : 'dir="ltr"' ?>>
 
             <?php if ($item['enclosure']): ?>
-            <div id="item-content-enclosure">
                 <?php if (strpos($item['enclosure_type'], 'audio') !== false): ?>
+                <div id="item-content-enclosure">
                     <audio controls>
                         <source src="<?= $item['enclosure'] ?>" type="<?= $item['enclosure_type'] ?>">
                     </audio>
+                </div>
                 <?php elseif (strpos($item['enclosure_type'], 'video') !== false): ?>
+                <div id="item-content-enclosure">
                     <video controls>
                         <source src="<?= $item['enclosure'] ?>" type="<?= $item['enclosure_type'] ?>">
                     </video>
-                <?php elseif (strpos($item['enclosure_type'], 'image') !== false): ?>
-                    <?php if ($image_proxy_enabled): ?>
-                        <img src="?action=proxy&amp;url=<?= urlencode($item['enclosure']) ?>" alt="enclosure"/>
-                    <?php else: ?>
-                        <img src="<?= $item['enclosure'] ?>" alt="enclosure"/>
-                    <?php endif ?>
+                </div>
+                <?php elseif (strpos($item['enclosure_type'], 'image') !== false && $item['content'] === ''): ?>
+                <div id="item-content-enclosure">
+                    <img src="<?= $item['enclosure'] ?>" alt="enclosure"/>
+                </div>
                 <?php endif ?>
-            </div>
             <?php endif ?>
 
             <?= $item['content'] ?>
@@ -93,17 +93,17 @@
         <nav class="bottom">
             <span class="nav-left">
                 <?php if ($item_nav['previous']): ?>
-                    <a href="?action=show&amp;menu=<?= $menu ?>&amp;id=<?= $item_nav['previous']['id'] ?>" id="previous-item" title="<?= Helper\escape($item_nav['previous']['title']) ?>">« <?= t('Previous') ?></a>
+                    <a href="?action=show&amp;menu=<?= $menu ?>&amp;id=<?= $item_nav['previous']['id'] ?>" id="previous-item" title="<?= Helper\escape($item_nav['previous']['title']) ?>"><?= t('Previous') ?></a>
                 <?php else: ?>
-                    « <?= t('Previous') ?>
+                    <?= t('Previous') ?>
                 <?php endif ?>
             </span>
 
             <span class="nav-right">
                 <?php if ($item_nav['next']): ?>
-                    <a href="?action=show&amp;menu=<?= $menu ?>&amp;id=<?= $item_nav['next']['id'] ?>" id="next-item" title="<?= Helper\escape($item_nav['next']['title']) ?>"><?= t('Next') ?> »</a>
+                    <a href="?action=show&amp;menu=<?= $menu ?>&amp;id=<?= $item_nav['next']['id'] ?>" id="next-item" title="<?= Helper\escape($item_nav['next']['title']) ?>"><?= t('Next') ?></a>
                 <?php else: ?>
-                    <?= t('Next') ?> »
+                    <?= t('Next') ?>
                 <?php endif ?>
             </span>
         </nav>

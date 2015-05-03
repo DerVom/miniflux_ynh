@@ -34,7 +34,7 @@ class Curl extends Client
      * @access private
      * @var array
      */
-    private $headers = array();
+    private $response_headers = array();
 
     /**
      * Counter on the number of header received
@@ -42,7 +42,7 @@ class Curl extends Client
      * @access private
      * @var integer
      */
-    private $headers_counter = 0;
+    private $response_headers_count = 0;
 
     /**
      * cURL callback to read the HTTP body
@@ -80,19 +80,57 @@ class Curl extends Client
     {
         $length = strlen($buffer);
 
-        if ($buffer === "\r\n") {
-            $this->headers_counter++;
+        if ($buffer === "\r\n" || $buffer === "\n") {
+            $this->response_headers_count++;
         }
         else {
 
-            if (! isset($this->headers[$this->headers_counter])) {
-                $this->headers[$this->headers_counter] = '';
+            if (! isset($this->response_headers[$this->response_headers_count])) {
+                $this->response_headers[$this->response_headers_count] = '';
             }
 
-            $this->headers[$this->headers_counter] .= $buffer;
+            $this->response_headers[$this->response_headers_count] .= $buffer;
         }
 
         return $length;
+    }
+
+    /**
+     * cURL callback to passthrough the HTTP status header to the client
+     *
+     * @access public
+     * @param  resource  $ch       cURL handler
+     * @param  string    $buffer   Header line
+     * @return integer   Length of the buffer
+     */
+    public function passthroughHeaders($ch, $buffer)
+    {
+        list($status, $headers) = HttpHeaders::parse(array($buffer));
+
+        if ($status !== 0) {
+            header(':', true, $status);
+        }
+        elseif (isset($headers['Content-Type'])) {
+            header($buffer);
+        }
+
+        return $this->readHeaders($ch, $buffer);
+    }
+
+    /**
+     * cURL callback to passthrough the HTTP body to the client
+     *
+     * If the function return -1, curl stop to read the HTTP response
+     *
+     * @access public
+     * @param  resource  $ch       cURL handler
+     * @param  string    $buffer   Chunk of data
+     * @return integer   Length of the buffer
+     */
+    public function passthroughBody($ch, $buffer)
+    {
+        echo $buffer;
+        return strlen($buffer);
     }
 
     /**
@@ -105,7 +143,6 @@ class Curl extends Client
     {
         $headers = array(
             'Connection: close',
-            'User-Agent: '.$this->user_agent,
         );
 
         if ($this->etag) {
@@ -116,6 +153,8 @@ class Curl extends Client
             $headers[] = 'If-Modified-Since: '.$this->last_modified;
         }
 
+        $headers = array_merge($headers, $this->request_headers);
+
         return $headers;
     }
 
@@ -123,6 +162,7 @@ class Curl extends Client
      * Prepare curl proxy context
      *
      * @access private
+     * @param  resource $ch
      * @return resource $ch
      */
     private function prepareProxyContext($ch)
@@ -151,6 +191,7 @@ class Curl extends Client
      * Prepare curl auth context
      *
      * @access private
+     * @param  resource $ch
      * @return resource $ch
      */
     private function prepareAuthContext($ch)
@@ -158,6 +199,30 @@ class Curl extends Client
         if ($this->username && $this->password) {
             curl_setopt($ch, CURLOPT_USERPWD, $this->username.':'.$this->password);
         }
+
+        return $ch;
+    }
+
+    /**
+     * Set write/header functions
+     *
+     * @access private
+     * @param  resource $ch
+     * @return resource $ch
+     */
+    private function prepareDownloadMode($ch)
+    {
+        $write_function = 'readBody';
+        $header_function = 'readHeaders';
+
+        if ($this->isPassthroughEnabled()) {
+            $write_function = 'passthroughBody';
+            $header_function = 'passthroughHeaders';
+
+        }
+
+        curl_setopt($ch, CURLOPT_WRITEFUNCTION, array($this, $write_function));
+        curl_setopt($ch, CURLOPT_HEADERFUNCTION, array($this, $header_function));
 
         return $ch;
     }
@@ -174,16 +239,27 @@ class Curl extends Client
 
         curl_setopt($ch, CURLOPT_URL, $this->url);
         curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->timeout);
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $this->prepareHeaders());
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, ini_get('open_basedir') === '');
         curl_setopt($ch, CURLOPT_MAXREDIRS, $this->max_redirects);
         curl_setopt($ch, CURLOPT_ENCODING, '');
-        curl_setopt($ch, CURLOPT_WRITEFUNCTION, array($this, 'readBody'));
-        curl_setopt($ch, CURLOPT_HEADERFUNCTION, array($this, 'readHeaders'));
         curl_setopt($ch, CURLOPT_COOKIEJAR, 'php://memory');
         curl_setopt($ch, CURLOPT_COOKIEFILE, 'php://memory');
 
+        // Disable SSLv3 by enforcing TLSv1.x for curl >= 7.34.0 and < 7.39.0.
+        // Versions prior to 7.34 and at least when compiled against openssl
+        // interpret this parameter as "limit to TLSv1.0" which fails for sites
+        // which enforce TLS 1.1+.
+        // Starting with curl 7.39.0 SSLv3 is disabled by default.
+        $version = curl_version();
+        if ($version['version_number'] >= 467456 && $version['version_number'] < 468736) {
+            curl_setopt($ch, CURLOPT_SSLVERSION, 1);
+        }
+
+        $ch = $this->prepareDownloadMode($ch);
         $ch = $this->prepareProxyContext($ch);
         $ch = $this->prepareAuthContext($ch);
 
@@ -232,7 +308,7 @@ class Curl extends Client
     {
         $this->executeContext();
 
-        list($status, $headers) = $this->parseHeaders(explode("\r\n", $this->headers[$this->headers_counter - 1]));
+        list($status, $headers) = HttpHeaders::parse(explode("\n", $this->response_headers[$this->response_headers_count - 1]));
 
         // When restricted with open_basedir
         if ($this->needToHandleRedirection($follow_location, $status)) {
@@ -270,11 +346,11 @@ class Curl extends Client
     {
         $nb_redirects = 0;
         $result = array();
-        $this->url = $location;
+        $this->url = Url::resolve($location, $this->url);
         $this->body = '';
         $this->body_length = 0;
-        $this->headers = array();
-        $this->headers_counter = 0;
+        $this->response_headers = array();
+        $this->response_headers_count = 0;
 
         while (true) {
 
@@ -287,11 +363,11 @@ class Curl extends Client
             $result = $this->doRequest(false);
 
             if ($result['status'] == 301 || $result['status'] == 302) {
-                $this->url = $result['headers']['Location'];
+                $this->url = Url::resolve($result['headers']['Location'], $this->url);
                 $this->body = '';
                 $this->body_length = 0;
-                $this->headers = array();
-                $this->headers_counter = 0;
+                $this->response_headers = array();
+                $this->response_headers_count = 0;
             }
             else {
                 break;

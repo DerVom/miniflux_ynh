@@ -62,9 +62,9 @@ class Feed
      * Feed date
      *
      * @access public
-     * @var integer
+     * @var \DateTime
      */
-    public $date = 0;
+    public $date = null;
 
     /**
      * Feed language
@@ -75,12 +75,20 @@ class Feed
     public $language = '';
 
     /**
-     * Feed logo URL (not the same as icon)
+     * Feed logo URL
      *
      * @access public
      * @var string
      */
     public $logo = '';
+
+    /**
+     * Feed icon URL
+     *
+     * @access public
+     * @var string
+     */
+    public $icon = '';
 
     /**
      * Return feed information
@@ -92,10 +100,11 @@ class Feed
     {
         $output = '';
 
-        foreach (array('id', 'title', 'feed_url', 'site_url', 'date', 'language', 'description', 'logo') as $property) {
+        foreach (array('id', 'title', 'feed_url', 'site_url', 'language', 'description', 'logo') as $property) {
             $output .= 'Feed::'.$property.' = '.$this->$property.PHP_EOL;
         }
 
+        $output .= 'Feed::date = '.$this->date->format(DATE_RFC822).PHP_EOL;
         $output .= 'Feed::isRTL() = '.($this->isRTL() ? 'true' : 'false').PHP_EOL;
         $output .= 'Feed::items = '.count($this->items).' items'.PHP_EOL;
 
@@ -138,6 +147,17 @@ class Feed
     public function getLogo()
     {
         return $this->logo;
+    }
+
+    /**
+     * Get the icon url
+     *
+     * @access public
+     * $return string
+     */
+    public function getIcon()
+    {
+        return $this->icon;
     }
 
     /**

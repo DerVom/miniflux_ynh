@@ -2,6 +2,7 @@
 
 namespace Model\Config;
 
+use Translator;
 use DirectoryIterator;
 use SimpleValidator\Validator;
 use SimpleValidator\Validators;
@@ -20,7 +21,9 @@ function get_reader_config()
     // Client
     $config->setClientTimeout(HTTP_TIMEOUT);
     $config->setClientUserAgent(HTTP_USER_AGENT);
-    $config->setGrabberUserAgent(HTTP_USER_AGENT);
+
+    // Grabber
+    $config->setGrabberRulesFolder(RULES_DIRECTORY);
 
     // Proxy
     $config->setProxyHostname(PROXY_HOSTNAME);
@@ -31,8 +34,8 @@ function get_reader_config()
     // Filter
     $config->setFilterIframeWhitelist(get_iframe_whitelist());
 
-    if ((bool) get('image_proxy')) {
-        $config->setFilterImageProxyUrl('?action=proxy&url=%s');
+    if ((bool) get('debug_mode')) {
+        Logger::enable();
     }
 
     // Parser
@@ -63,7 +66,7 @@ function debug($line)
 // Write PicoFeed debug output to a file
 function write_debug()
 {
-    if (DEBUG) {
+    if ((bool) get('debug_mode')) {
         file_put_contents(DEBUG_FILENAME, implode(PHP_EOL, Logger::getMessages()));
     }
 }
@@ -75,10 +78,21 @@ function get_timezones()
     return array_combine(array_values($timezones), $timezones);
 }
 
+// Returns true if the language is RTL
+function is_language_rtl()
+{
+    $languages = array(
+        'ar_AR'
+    );
+
+    return in_array(get('language'), $languages);
+}
+
 // Get all supported languages
 function get_languages()
 {
     return array(
+        'ar_AR' => 'عربي',
         'cs_CZ' => 'Čeština',
         'de_DE' => 'Deutsch',
         'en_US' => 'English',
@@ -87,6 +101,8 @@ function get_languages()
         'it_IT' => 'Italiano',
         'pt_BR' => 'Português',
         'zh_CN' => '简体中国',
+        'sr_RS' => 'српски',
+        'sr_RS@latin' => 'srpski',
     );
 }
 
@@ -137,9 +153,9 @@ function get_autoflush_read_options()
         '0' => t('Never'),
         '-1' => t('Immediately'),
         '1' => t('After %d day', 1),
-        '5' => t('After %d days', 5),
-        '15' => t('After %d days', 15),
-        '30' => t('After %d days', 30)
+        '5' => t('After %d day', 5),
+        '15' => t('After %d day', 15),
+        '30' => t('After %d day', 30)
     );
 }
 
@@ -148,10 +164,10 @@ function get_autoflush_unread_options()
 {
     return array(
         '0' => t('Never'),
-        '15' => t('After %d days', 15),
-        '30' => t('After %d days', 30),
-        '45' => t('After %d days', 45),
-        '60' => t('After %d days', 60),
+        '15' => t('After %d day', 15),
+        '30' => t('After %d day', 30),
+        '45' => t('After %d day', 45),
+        '60' => t('After %d day', 60),
     );
 }
 
@@ -218,7 +234,7 @@ function check_csrf($token)
 function generate_token()
 {
     if (function_exists('openssl_random_pseudo_bytes')) {
-        return bin2hex(\openssl_random_pseudo_bytes(25));
+        return bin2hex(openssl_random_pseudo_bytes(25));
     }
     else if (ini_get('open_basedir') === '' && strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN') {
         return hash('sha256', file_get_contents('/dev/urandom', false, null, 0, 30));
@@ -237,14 +253,14 @@ function new_tokens()
         'fever_token' => substr(generate_token(), 0, 8),
     );
 
-    return Database::get('db')->table('config')->update($values);
+    return Database::get('db')->hashtable('settings')->put($values);
 }
 
 // Get a config value from the DB or from the session
 function get($name)
 {
     if (! isset($_SESSION)) {
-        return Database::get('db')->table('config')->findOneColumn($name);
+        return current(Database::get('db')->hashtable('settings')->get($name));
     }
     else {
 
@@ -263,9 +279,7 @@ function get($name)
 // Get all config parameters
 function get_all()
 {
-    $config = Database::get('db')
-        ->table('config')
-        ->findOne();
+    $config = Database::get('db')->hashtable('settings')->get();
 
     unset($config['password']);
 
@@ -283,6 +297,11 @@ function validate_modification(array $values)
         new Validators\Required('items_per_page', t('Value required')),
         new Validators\Integer('items_per_page', t('Must be an integer')),
         new Validators\Required('theme', t('Value required')),
+        new Validators\Integer('frontend_updatecheck_interval', t('Must be an integer')),
+        new Validators\Integer('debug_mode', t('Must be an integer')),
+        new Validators\Integer('nocontent', t('Must be an integer')),
+        new Validators\Integer('favicons', t('Must be an integer')),
+        new Validators\Integer('original_marks_read', t('Must be an integer')),
     );
 
     if (ENABLE_AUTO_UPDATE) {
@@ -309,7 +328,7 @@ function save(array $values)
 {
     // Update the password if needed
     if (! empty($values['password'])) {
-        $values['password'] = \password_hash($values['password'], PASSWORD_BCRYPT);
+        $values['password'] = password_hash($values['password'], PASSWORD_BCRYPT);
     } else {
         unset($values['password']);
     }
@@ -321,7 +340,7 @@ function save(array $values)
         Database::get('db')->table('items')->update(array('content' => ''));
     }
 
-    if (Database::get('db')->table('config')->update($values)) {
+    if (Database::get('db')->hashtable('settings')->put($values)) {
         reload();
         return true;
     }
@@ -333,7 +352,7 @@ function save(array $values)
 function reload()
 {
     $_SESSION['config'] = get_all();
-    \Translator\load(get('language'));
+    Translator\load(get('language'));
 }
 
 // Get the user agent of the connected user

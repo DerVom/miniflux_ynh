@@ -22,7 +22,7 @@ Sorry, I don't plan to have categories or tags.
 I found a bug, what next?
 -------------------------
 
-Report the bug to the [issues tracker](https://github.com/fguillot/miniflux/issues) and I will fix it.
+Report the bug to the [issues tracker](https://github.com/miniflux/miniflux/issues) and I will fix it.
 
 You can report feeds that doesn't works properly too.
 
@@ -31,7 +31,7 @@ What browser is compatible with Miniflux?
 
 Miniflux is tested with the latest versions of Mozilla Firefox, Google Chrome and Safari.
 
-I don't use Microsoft products, and as such I have no idea if Miniflux works correctly with Internet Explorer.
+Miniflux is also tested on mobile devices Android (Moto G) and Ipad Mini (Retina).
 
 How to setup Miniflux on OVH shared-hosting?
 --------------------------------------------

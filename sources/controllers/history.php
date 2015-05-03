@@ -3,7 +3,6 @@
 use PicoFarad\Router;
 use PicoFarad\Response;
 use PicoFarad\Request;
-use PicoFarad\Session;
 use PicoFarad\Template;
 
 // Display history page
@@ -11,7 +10,7 @@ Router\get_action('history', function() {
 
     $offset = Request\int_param('offset', 0);
     $nb_items = Model\Item\count_by_status('read');
-    $items = Model\Item\get_all(
+    $items = Model\Item\get_all_by_status(
         'read',
         $offset,
         Model\Config\get('items_per_page'),
@@ -21,6 +20,7 @@ Router\get_action('history', function() {
 
     Response\html(Template\layout('history', array(
         'favicons' => Model\Feed\get_item_favicons($items),
+        'original_marks_read' => Model\Config\get('original_marks_read'),
         'items' => $items,
         'order' => '',
         'direction' => '',

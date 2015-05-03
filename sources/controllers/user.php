@@ -3,21 +3,19 @@
 use PicoFarad\Router;
 use PicoFarad\Response;
 use PicoFarad\Request;
-use PicoFarad\Session;
 use PicoFarad\Template;
 
 // Logout and destroy session
 Router\get_action('logout', function() {
 
-    Model\RememberMe\destroy();
-    Session\close();
+    Model\User\logout();
     Response\redirect('?action=login');
 });
 
 // Display form login
 Router\get_action('login', function() {
 
-    if (isset($_SESSION['user'])) {
+    if (Model\User\is_loggedin()) {
         Response\redirect('?action=unread');
     }
 

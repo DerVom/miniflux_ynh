@@ -2,6 +2,9 @@
 
 namespace PicoFeed\Filter;
 
+use DOMXpath;
+use PicoFeed\Parser\XmlParser;
+
 /**
  * Tag Filter class
  *
@@ -10,6 +13,17 @@ namespace PicoFeed\Filter;
  */
 class Tag
 {
+    /**
+     * Tags blacklist (Xpath expressions)
+     *
+     * @access private
+     * @var array
+     */
+    private $tag_blacklist = array(
+        '//script',
+        '//style',
+    );
+
     /**
      * Tags whitelist
      *
@@ -104,7 +118,7 @@ class Tag
      */
     public function isSelfClosingTag($tag)
     {
-        return in_array($tag, array('br', 'img'));
+        return $tag === 'br' || $tag === 'img';
     }
 
     /**
@@ -135,6 +149,33 @@ class Tag
     }
 
     /**
+     * Remove script tags
+     *
+     * @access public
+     * @param  string  $data  Input data
+     * @return string
+     */
+    public function removeBlacklistedTags($data)
+    {
+        $dom = XmlParser::getDomDocument($data);
+
+        if ($dom === false) {
+            return '';
+        }
+
+        $xpath = new DOMXpath($dom);
+
+        $nodes = $xpath->query(implode(' | ', $this->tag_blacklist));
+
+        foreach ($nodes as $node) {
+            $node->parentNode->removeChild($node);
+        }
+
+        return $dom->saveXML();
+    }
+
+
+    /**
      * Remove empty tags
      *
      * @access public
@@ -153,7 +194,7 @@ class Tag
      * @param  string  $data  Input data
      * @return string
      */
-    public function removeMultipleTags($data)
+    public function removeMultipleBreakTags($data)
     {
         return preg_replace("/(<br\s*\/?>\s*)+/", "<br/>", $data);
     }

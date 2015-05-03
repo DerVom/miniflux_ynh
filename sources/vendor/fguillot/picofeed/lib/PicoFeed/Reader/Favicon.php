@@ -157,50 +157,34 @@ class Favicon
      *
      * @access public
      * @param  string    $website_link    URL
+     * @param  string    $favicon_link    optional URL
      * @return string
      */
-    public function find($website_link)
+    public function find($website_link, $favicon_link = '')
     {
         $website = new Url($website_link);
 
-        $icons = $this->extract($this->download($website->getBaseUrl('/'))->getContent());
-        $icons[] = $website->getBaseUrl('/favicon.ico');
+        if ($favicon_link !== '') {
+            $icons = array($favicon_link);
+        } else {
+            $icons = $this->extract($this->download($website->getBaseUrl('/'))->getContent());
+            $icons[] = $website->getBaseUrl('/favicon.ico');
+        }
 
         foreach ($icons as $icon_link) {
-
-            $icon_link = $this->convertLink($website, new Url($icon_link));
+            $icon_link = Url::resolve($icon_link, $website);
             $resource = $this->download($icon_link);
             $this->content = $resource->getContent();
             $this->content_type = $resource->getContentType();
 
             if ($this->content !== '') {
                 return $icon_link;
+            } elseif ($favicon_link !== '') {
+                return $this->find($website_link);
             }
         }
 
         return '';
-    }
-
-    /**
-     * Convert icon links to absolute url
-     *
-     * @access public
-     * @param  \PicoFeed\Client\Url      $website     Website url
-     * @param  \PicoFeed\Client\Url      $icon        Icon url
-     * @return string
-     */
-    public function convertLink(Url $website, Url $icon)
-    {
-        $base_url = '';
-
-        if ($icon->isRelativeUrl()) {
-            $base_url = $website->getBaseUrl();
-        }
-        else if ($icon->isProtocolRelative()) {
-            $icon->setScheme($website->getScheme());
-        }
-
-        return $icon->getAbsoluteUrl($base_url);
     }
 
     /**

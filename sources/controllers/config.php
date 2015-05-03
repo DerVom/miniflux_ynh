@@ -138,7 +138,7 @@ Router\get_action('config', function() {
 // Update preferences
 Router\post_action('config', function() {
 
-    $values = Request\values() + array('nocontent' => 0, 'image_proxy' => 0, 'favicons' => 0);
+    $values = Request\values() + array('nocontent' => 0, 'image_proxy' => 0, 'favicons' => 0, 'debug_mode' => 0, 'original_marks_read' => 0);
     Model\Config\check_csrf_values($values);
     list($valid, $errors) = Model\Config\validate_modification($values);
 
@@ -172,6 +172,23 @@ Router\post_action('config', function() {
     )));
 });
 
+// Get configuration parameters (AJAX request)
+Router\post_action('get-config', function() {
+    $return = array();
+    $options = Request\values();
+
+    if (empty($options)) {
+        $return = Model\Config\get_all();
+    }
+    else {
+        foreach ($options as $name) {
+            $return[$name] = Model\Config\get($name);
+        }
+    }
+
+    Response\json($return);
+});
+
 // Display help page
 Router\get_action('help', function() {
 
@@ -179,7 +196,7 @@ Router\get_action('help', function() {
         'config' => Model\Config\get_all(),
         'nb_unread_items' => Model\Item\count_by_status('unread'),
         'menu' => 'config',
-        'title' => t('Help')
+        'title' => t('Preferences')
     )));
 });
 
@@ -191,7 +208,7 @@ Router\get_action('about', function() {
         'config' => Model\Config\get_all(),
         'nb_unread_items' => Model\Item\count_by_status('unread'),
         'menu' => 'config',
-        'title' => t('About')
+        'title' => t('Preferences')
     )));
 });
 
@@ -204,7 +221,7 @@ Router\get_action('database', function() {
         'db_size' => filesize(\Model\Database\get_path()),
         'nb_unread_items' => Model\Item\count_by_status('unread'),
         'menu' => 'config',
-        'title' => t('Database')
+        'title' => t('Preferences')
     )));
 });
 
@@ -215,7 +232,7 @@ Router\get_action('api', function() {
         'config' => Model\Config\get_all(),
         'nb_unread_items' => Model\Item\count_by_status('unread'),
         'menu' => 'config',
-        'title' => t('API')
+        'title' => t('Preferences')
     )));
 });
 
@@ -226,7 +243,7 @@ Router\get_action('services', function() {
         'errors' => array(),
         'values' => Model\Config\get_all() + array('csrf' => Model\Config\generate_csrf()),
         'menu' => 'config',
-        'title' => t('External services')
+        'title' => t('Preferences')
     )));
 });
 

@@ -2,10 +2,15 @@
 
 namespace Helper;
 
+function is_secure_connection()
+{
+    return ! empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+}
+
 /*
  * get Version number from git archive output
  */
-function parseAppVersion($refnames, $commithash)
+function parse_app_version($refnames, $commithash)
 {
     $version = 'master';
 
@@ -33,7 +38,7 @@ function favicon(array $favicons, $feed_id)
     return '';
 }
 
-function isRTL(array $item)
+function is_rtl(array $item)
 {
     return ! empty($item['rtl']) || \PicoFeed\Parser\Parser::isLanguageRTL($item['language']);
 }
@@ -56,7 +61,7 @@ function css()
 
 function get_current_base_url()
 {
-    $url = isset($_SERVER['HTTPS']) ? 'https://' : 'http://';
+    $url = is_secure_connection() ? 'https://' : 'http://';
     $url .= $_SERVER['SERVER_NAME'];
     $url .= $_SERVER['SERVER_PORT'] == 80 || $_SERVER['SERVER_PORT'] == 443 ? '' : ':'.$_SERVER['SERVER_PORT'];
     $url .= dirname($_SERVER['PHP_SELF']) !== '/' ? dirname($_SERVER['PHP_SELF']).'/' : '/';
@@ -111,7 +116,11 @@ function summary($value, $min_length = 5, $max_length = 120, $end = '[...]')
     $length = strlen($value);
 
     if ($length > $max_length) {
-        return substr($value, 0, strpos($value, ' ', $max_length)).' '.$end;
+        $max = strpos($value, ' ', $max_length);
+        if ($max === false) {
+            $max = $max_length;
+        }
+        return substr($value, 0, $max).' '.$end;
     }
     else if ($length < $min_length) {
         return '';
@@ -135,22 +144,22 @@ function relative_time($timestamp, $fallback_date_format = '%e %B %Y %k:%M')
 
     if ($diff < 0) return \dt($fallback_date_format, $timestamp);
 
-    if ($diff < 60) return \t('%d second'.($diff > 1 ? 's' : '').' ago', $diff);
+    if ($diff < 60) return \t('%d second ago', $diff);
 
     $diff = floor($diff / 60);
-    if ($diff < 60) return \t('%d minute'.($diff > 1 ? 's' : '').' ago', $diff);
+    if ($diff < 60) return \t('%d minute ago', $diff);
 
     $diff = floor($diff / 60);
-    if ($diff < 24) return \t('%d hour'.($diff > 1 ? 's' : '').' ago', $diff);
+    if ($diff < 24) return \t('%d hour ago', $diff);
 
     $diff = floor($diff / 24);
-    if ($diff < 7) return \t('%d day'.($diff > 1 ? 's' : '').' ago', $diff);
+    if ($diff < 7) return \t('%d day ago', $diff);
 
     $diff = floor($diff / 7);
-    if ($diff < 4) return \t('%d week'.($diff > 1 ? 's' : '').' ago', $diff);
+    if ($diff < 4) return \t('%d week ago', $diff);
 
     $diff = floor($diff / 4);
-    if ($diff < 12) return \t('%d month'.($diff > 1 ? 's' : '').' ago', $diff);
+    if ($diff < 12) return \t('%d month ago', $diff);
 
     return \dt($fallback_date_format, $timestamp);
 }
@@ -229,14 +238,14 @@ function form_radios($name, array $options, array $values = array())
     return $html;
 }
 
-function form_radio($name, $label, $value, $selected = false, $class = '')
+function form_radio($name, $label, $value, $checked = false, $class = '')
 {
-    return '<label><input type="radio" name="'.$name.'" class="'.$class.'" value="'.escape($value).'" '.($selected ? 'selected="selected"' : '').'>'.escape($label).'</label>';
+    return '<label><input type="radio" name="'.$name.'" class="'.$class.'" value="'.escape($value).'" '.($checked ? 'checked' : '').'>'.escape($label).'</label>';
 }
 
 function form_checkbox($name, $label, $value, $checked = false, $class = '')
 {
-    return '<label><input type="checkbox" name="'.$name.'" class="'.$class.'" value="'.escape($value).'" '.($checked ? 'checked="checked"' : '').'>&nbsp;'.escape($label).'</label>';
+    return '<label><input type="checkbox" name="'.$name.'" class="'.$class.'" value="'.escape($value).'" '.($checked ? 'checked="checked"' : '').'><span>'.escape($label).'</span></label>';
 }
 
 function form_label($label, $name, $class = '')

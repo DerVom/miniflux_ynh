@@ -77,6 +77,18 @@ class Rss20 extends Parser
     }
 
     /**
+     * Find the feed icon
+     *
+     * @access public
+     * @param  SimpleXMLElement          $xml     Feed xml
+     * @param  \PicoFeed\Parser\Feed     $feed    Feed object
+     */
+    public function findFeedIcon(SimpleXMLElement $xml, Feed $feed)
+    {
+        $feed->icon = '';
+    }
+
+    /**
      * Find the feed title
      *
      * @access public
@@ -122,7 +134,7 @@ class Rss20 extends Parser
     public function findFeedDate(SimpleXMLElement $xml, Feed $feed)
     {
         $date = isset($xml->channel->pubDate) ? $xml->channel->pubDate : $xml->channel->lastBuildDate;
-        $feed->date = $this->parseDate((string) $date);
+        $feed->date = $this->date->getDateTime((string) $date);
     }
 
     /**
@@ -130,9 +142,10 @@ class Rss20 extends Parser
      *
      * @access public
      * @param  SimpleXMLElement          $entry   Feed item
-     * @param  \PicoFeed\Parser\Item     $item    Item object
+     * @param  Item                      $item    Item object
+     * @param  \PicoFeed\Parser\Feed     $feed    Feed object
      */
-    public function findItemDate(SimpleXMLElement $entry, Item $item)
+    public function findItemDate(SimpleXMLElement $entry, Item $item, Feed $feed)
     {
         $date = XmlParser::getNamespaceValue($entry, $this->namespaces, 'date');
 
@@ -144,7 +157,7 @@ class Rss20 extends Parser
             $date = (string) $entry->pubDate;
         }
 
-        $item->date = $this->parseDate($date);
+        $item->date = empty($date) ? $feed->getDate() : $this->date->getDateTime($date);
     }
 
     /**
@@ -196,7 +209,7 @@ class Rss20 extends Parser
     {
         $content = XmlParser::getNamespaceValue($entry, $this->namespaces, 'encoded');
 
-        if (empty($content) && $entry->description->count() > 0) {
+        if (trim($content) === '' && $entry->description->count() > 0) {
             $content = (string) $entry->description;
         }
 

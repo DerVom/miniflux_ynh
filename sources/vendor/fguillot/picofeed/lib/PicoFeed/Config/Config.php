@@ -16,6 +16,7 @@ namespace PicoFeed\Config;
  * @method  \PicoFeed\Config\Config setProxyPort(integer $value)
  * @method  \PicoFeed\Config\Config setProxyUsername(string $value)
  * @method  \PicoFeed\Config\Config setProxyPassword(string $value)
+ * @method  \PicoFeed\Config\Config setGrabberRulesFolder(string $value)
  * @method  \PicoFeed\Config\Config setGrabberTimeout(integer $value)
  * @method  \PicoFeed\Config\Config setGrabberUserAgent(string $value)
  * @method  \PicoFeed\Config\Config setParserHashAlgo(string $value)
@@ -32,6 +33,7 @@ namespace PicoFeed\Config;
  * @method  \PicoFeed\Config\Config setFilterBlacklistedTags(array $value)
  * @method  \PicoFeed\Config\Config setFilterImageProxyUrl($value)
  * @method  \PicoFeed\Config\Config setFilterImageProxyCallback($closure)
+ * @method  \PicoFeed\Config\Config setFilterImageProxyProtocol($value)
  *
  * @method  integer    getClientTimeout()
  * @method  string     getClientUserAgent()
@@ -41,6 +43,7 @@ namespace PicoFeed\Config;
  * @method  integer    getProxyPort()
  * @method  string     getProxyUsername()
  * @method  string     getProxyPassword()
+ * @method  string     getGrabberRulesFolder()
  * @method  integer    getGrabberTimeout()
  * @method  string     getGrabberUserAgent()
  * @method  string     getParserHashAlgo()
@@ -57,6 +60,7 @@ namespace PicoFeed\Config;
  * @method  array      getFilterBlacklistedTags(array $default_value)
  * @method  string     getFilterImageProxyUrl()
  * @method  \Closure   getFilterImageProxyCallback()
+ * @method  string     getFilterImageProxyProtocol()
  */
 class Config
 {

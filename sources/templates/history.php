@@ -10,7 +10,7 @@
     </div>
 
     <?php if ($nothing_to_read): ?>
-        <p class="alert"><?= t('There is nothing new to read, enjoy your previous readings!') ?></p>
+        <p class="alert alert-info"><?= t('There is nothing new to read, enjoy your previous readings!') ?></p>
     <?php endif ?>
 
     <section class="items" id="listing">
@@ -22,6 +22,7 @@
                 'hide' => true,
                 'display_mode' => $display_mode,
                 'favicons' => $favicons,
+                'original_marks_read' => $original_marks_read,
             )) ?>
         <?php endforeach ?>
 
